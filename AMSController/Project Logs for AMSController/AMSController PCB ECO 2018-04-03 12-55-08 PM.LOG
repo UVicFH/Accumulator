@@ -1,0 +1,5 @@
+Added Pin To Net: NetName=5V Pin=U7-18
+Change Net Name : Old Net Name=NetP7_1 New Net Name=TX
+Change Net Name : Old Net Name=NetP7_2 New Net Name=RX
+Change Net Name : Old Net Name=V- New Net Name=TS-
+Added Member To Class: ClassName=CellMonitor1 Member=Component C4 Cap
