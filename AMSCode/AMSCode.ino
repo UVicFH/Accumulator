@@ -78,14 +78,6 @@ uint16_t stat_codes[NUM_CHIPS][4];
  |IC1 GPIO1        |IC1 GPIO2        |IC1 GPIO3        |IC1 GPIO4        |IC1 GPIO5        |IC1 Vref2        |IC2 GPIO1        |IC2 GPIO2      |  .....    |
 */
 
-uint8_t flags_uvov[NUM_CHIPS][3];
-
-uint8_t system_thsd[NUM_CHIPS][1];
-
-uint8_t system_muxfail[NUM_CHIPS][1];
-
-long system_open_wire[NUM_CHIPS];
-
 uint8_t tx_cfg[NUM_CHIPS][6];
 /*!<
   The tx_cfg[][6] stores the ltc6811 configuration data that is going to be written
@@ -115,29 +107,35 @@ void setup()
   pinMode(AMS_STATUS_PIN, OUTPUT);
   digitalWrite(AMS_STATUS_PIN, HIGH);
 
+  // Slave-select pin for the LTC6811. Active low to enable SPI communication
   pinMode(SPI_LTC_CS_PIN, OUTPUT);
   digitalWrite(SPI_LTC_CS_PIN, LOW);
 }
 
 void loop()
 {
+  // Send a wakeup command to the LTC6811
   wakeup_sleep();
 
-  // Write configuration to all LTC6811 chips in the chain
+  // Print the configuration for all LTC6811 chips in the chain (for debugging)
+  // The tx_cfg array contains the chip configuration set in init_cfg()
   Serial.print("Configuration being written:\t");
   for (int i = 0; i < 6; i++) {
     Serial.print(tx_cfg[0][i]);
     Serial.print("\t");
   }
   Serial.println();
-  ltc6811_wrcfg(NUM_CHIPS, tx_cfg);
+  ltc6811_wrcfg(NUM_CHIPS, tx_cfg); // Write the desired config to the LTC6811s
 
   delay(500);
 
+  // Send another wakeup command
   wakeup_sleep();
 
   // Read back the chip config (should be the same as what was written)
   int8_t pec_code = ltc6811_rdcfg(NUM_CHIPS, rx_cfg);
+
+  // Print the chip config read back for troubleshooting
   if (pec_code == -1) {
     Serial.print("Configuration being read:\t");
     for (int i = 0; i < 6; i++) {
