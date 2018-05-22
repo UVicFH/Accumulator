@@ -101,7 +101,7 @@ void setup()
 {
   delay(5000);
   Serial.begin(115200);
-  spi_enable(SPI_CLOCK_DIV16);  // This will set the Linduino to have a 1MHz Clock
+  spi_enable(SPI_CLOCK_DIV128);  // This will set the Linduino to have a 1MHz Clock
   init_cfg();  //initialize the 681x configuration array to be written
 
   pinMode(AMS_STATUS_PIN, OUTPUT);
@@ -121,7 +121,7 @@ void loop()
   // The tx_cfg array contains the chip configuration set in init_cfg()
   Serial.print("Configuration being written:\t");
   for (int i = 0; i < 6; i++) {
-    Serial.print(tx_cfg[0][i]);
+    Serial.print(tx_cfg[0][i], HEX);
     Serial.print("\t");
   }
   Serial.println();
@@ -136,10 +136,10 @@ void loop()
   int8_t pec_code = ltc6811_rdcfg(NUM_CHIPS, rx_cfg);
 
   // Print the chip config read back for troubleshooting
-  if (pec_code == -1) {
+  if (pec_code != -1) {
     Serial.print("Configuration being read:\t");
     for (int i = 0; i < 6; i++) {
-      Serial.print(rx_cfg[0][i]);
+      Serial.print(rx_cfg[0][i], HEX);
       Serial.print("\t");
     }
     Serial.println();
@@ -147,6 +147,7 @@ void loop()
     Serial.println("PEC error when reading config");
   }
 
+  read_and_print_voltages();
   delay(MEASUREMENT_LOOP_TIME);
 }
 
@@ -157,7 +158,7 @@ void init_cfg()
   for (int i = 0; i < NUM_CHIPS; i++) {
     tx_cfg[i][0] = 0xFC | ADC_OPT;
     tx_cfg[i][1] = (uint8_t)(uv_val&0xFF);
-    tx_cfg[i][2] = (uint8_t)((ov_val&0x00F)|((uv_val&0xF00)>>8));
+    tx_cfg[i][2] = (uint8_t)(((ov_val&0x00F)<<4)|((uv_val&0xF00)>>8));
     tx_cfg[i][3] = (uint8_t)((ov_val&0xFF0)>>4);
     tx_cfg[i][4] = 0x00;
     tx_cfg[i][5] = 0x00;
@@ -191,8 +192,8 @@ void read_and_print_voltages()
     Serial.print(": ");
 
     for (int cell = 0; cell < CELL_CHANNELS; cell++) {
-      Serial.print(cell_codes[chip][cell]);
-      Serial.print(" ");
+      Serial.print(cell_codes[chip][cell]*0.0001);
+      Serial.print("V ");
     }
 
     Serial.println();
