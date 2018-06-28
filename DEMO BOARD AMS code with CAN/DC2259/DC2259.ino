@@ -145,7 +145,7 @@ void setup()
   LTC6811_reset_crc_count(TOTAL_IC,bms_ic);
   LTC6811_init_reg_limits(TOTAL_IC,bms_ic);
   CANSetup();
-  //ams_status_setup();
+  ams_status_setup();
   print_menu();
 }
 
@@ -154,24 +154,38 @@ void setup()
 ***********************************************************************/
 void loop()
 {
-  if (Serial.available())           // Check for user input
-  {
-    uint32_t user_command;
-    user_command = read_int();      // Read the user command
-    Serial.println(user_command);
-    run_command(user_command);
-  }
-
+  //on startup, enable the ams box and output voltage since the only reason to start tsms is to use the ams.
   if (millis() > 5000 && !precharged){
     precharged = 1;
     digitalWrite(precharged_pin, precharged);
-    digitalWrite(air_high_pin, 1);
+    digitalWrite(air_toggle_pin, 1);
   }
 
+  //start monitoring all of the cells and and sensors, and outputing them over can and signal wires.
   if( abs(millis()-current_millis) > meas_time ){
+    //read new cell voltages and actual BMS tasks.
     read_voltages();
+    //read current sensor/
+    read_current();
+
+    //To account for errors in reading a error counter is updated where ever a error occurs. if the error is deadly, the function would stop ams right there and then
+    //Otherwise this counter is used. if it counts too high, we trip the ams otherwise assume a glitch and carry on with our lives.
+    if (   (current_millis-current_error_millis) < error_time_allowed    ){
+      if (error_cnt >= max_error_cnt) { 
+        set_ams_status(false);
+      }
+      else{
+        error_cnt = 0;
+        current_error_millis = millis();
+      }
+      
+    }
+    
+    
+    //format and send over can
     CAN_send();
-    current_millis = millis();
+
+    //Serial debugging print statements, can be removed once code is finalized and finished, hahahahahahahahahahahahahahahaha, never gonna happen.
     Serial.println();
     Serial.print("AMS STAUS: ");
     Serial.print(ams_status);
@@ -190,17 +204,23 @@ void loop()
     Serial.print(pack_voltage);
     Serial.println();
 
-    for(int x=0; x<TOTAL_IC; x++){
-      Serial.println();
-      Serial.print("isospi rev: ");
-      Serial.print(bms_ic[x].isospi_reverse);
-      Serial.println();
-      bms_ic[x].isospi_reverse = 0;
-
-    }
+    Serial.println();
+    Serial.print("pack current: ");
+    Serial.print(pack_current_draw);
+    Serial.println();
     
     print_discharge_status();
+
+    
+    //the order of the data being read back seemed to be wrong so this function is used to correct that. it works but not 100% sure exacttly why. just leave it in untill you know for sure.
+    for(int x=0; x<TOTAL_IC; x++){
+      bms_ic[x].isospi_reverse = 0;
+    }
+   
+    current_millis = millis();
   }
+
+  //balancing the cells is as often as possible since the discharge timmers are not used. this keeps the ltc chips discharging as required.
   balance_cells();
   delay(100);
 
@@ -731,6 +751,7 @@ void check_error(int error)
   if (error == -1)
   {
     Serial.println(F("A PEC error was detected in the received data"));
+    error_cnt++;
   }
 }
 
@@ -777,12 +798,19 @@ char get_char()
 //*****************************************************************************************************************
 void ams_status_setup() {
   pinMode(AMS_STATUS_PIN, OUTPUT);
+  pinMode(precharged_pin, INPUT);
+  pinMode(air_toggle_pin, OUTPUT);
+  pinMode(midpack_input_pin, INPUT);
+  pinMode(midpack_output_pin, OUTPUT);
+  pinMode(pack_current_in_pin, INPUT);
   digitalWrite(AMS_STATUS_PIN, HIGH);
+  
 }
 
 void set_ams_status(bool val) {
   ams_status = val; // AMS Fault for Can
   digitalWrite(AMS_STATUS_PIN, val); // AMS Fault for RPDU
+  digitalWrite(air_toggle_pin, val);
 };
 
 
@@ -859,7 +887,7 @@ void balance_cells() {
       }
 
     //This checks if any cell to too far above the others and discharges it
-    if (cell_data[(each_ic*12)+i+1] >  (min_cell_voltage+cell_balance_window) ) {
+    if (    (cell_data[(each_ic*12)+i+1] >  (min_cell_voltage+cell_balance_window)) && (min_cell_voltage > low_safety_cell_v)    ) {
         cell[i] = 1;
         cell_discharging[each_ic][i] = 1;
       }
@@ -876,6 +904,7 @@ void balance_cells() {
   
 };
 
+//This is a debugging functions, it tells us which cell if any is currenttly being discharged. !!! WARNING, discharge led may not be lit on ltc board due to low voltages, KEEP IN MIND WHEN DEBUGGING !!!
 void print_discharge_status() {
   Serial.println("Discharging or not:");
     for(int x=0; x<TOTAL_IC; x++) {
@@ -890,18 +919,27 @@ void print_discharge_status() {
     }
 };
 
+//This is based on the current sesnor in the AMS box. it outputs a voltage level 0-5V based on the current. there are two chanels, we use the bigger one, duh.
+//The formula is very simple, just take the read value on adc, convert to voltage, and feed to formula. look at datasheet for more details.
+void read_current() {
+  int adc_in = analogRead(pack_current_in_pin);
+  float adc_voltage = adc_in/1024.0*5.0;
+  pack_current_draw = (adc_voltage-2.5)*(1.0/0.004) + 1.22;  //This formula is from the datasheet for current sensor i=(v-(Vsupply/2))*(1/g)*(5/Vsupply), the 1.22 is just an offset value
+};
+
 void read_voltages() {
-  cell_data[0] = 0;
   // ADC Cell Measurement and conversion
   run_command(3);
-  // Store cell voltages in cell_data array (1 indexed)
+  // Store cell voltages in cell_data array
   run_command(4);
 
+  //re order the cell voltages into another array to ease of use.
   for(int each_ic=0; each_ic<TOTAL_IC; each_ic++){
     for(int i=0; i<12; i++){
       cell_data[(each_ic*12)+i+1] =  bms_ic[each_ic].cells.c_codes[i]*0.0001,4;
     }
   }
+
 
   // Calulate Pack Voltage, minimum voltage and max cell voltage
   pack_voltage = 0;
@@ -921,21 +959,25 @@ void read_voltages() {
       min_cell_num = i;
     }
     if(cell_data[i] >= cell_hard_upper_limit) {
-      set_ams_status(false);
+      //add an error count
+      error_cnt++;      
     }
   }
   
-  // Set regen status based on whether we exceed soft upper limit
+  // Set regen status based on whether we exceed soft upper limit  -This is only for the mabx and motor controller since it just needs to not trip ams fault.
   if(max_cell_voltage < cell_soft_upper_limit){
      regen_status = true;
   } else {
      regen_status = false;
-     midpack_status = false;
-     digitalWrite(midpack_pin, false);
   } 
 
-  if(max_cell_voltage < (cell_soft_upper_limit - cell_hyst)) {
-    digitalWrite(midpack_pin, true);
+  // Allow pack to be charged externally. should be always on, but this functions stops charging up to the point of damage.
+  if(  (max_cell_voltage < (cell_hard_upper_limit - cell_hyst)) || (pack_voltage < (cell_soft_upper_limit*total_cells))  ) {
+    digitalWrite(midpack_output_pin, true);
+    midpack_status = true;
+  }
+  else {
+    digitalWrite(midpack_output_pin, true);
     midpack_status = true;
   }
 };
