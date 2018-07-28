@@ -160,17 +160,10 @@ void loop()
     digitalWrite(precharged_pin, precharged);
     digitalWrite(air_toggle_pin, 1);
   }
-
-  //start monitoring all of the cells and and sensors, and outputing them over can and signal wires.
-  if( abs(millis()-current_millis) > meas_time ){
-    //read new cell voltages and actual BMS tasks.
-    read_voltages();
-    //read current sensor/
-    read_current();
-
-    //To account for errors in reading a error counter is updated where ever a error occurs. if the error is deadly, the function would stop ams right there and then
+  
+  //To account for errors in reading a error counter is updated where ever a error occurs. if the error is deadly, the function would stop ams right there and then
     //Otherwise this counter is used. if it counts too high, we trip the ams otherwise assume a glitch and carry on with our lives.
-    if (   (current_millis-current_error_millis) < error_time_allowed    ){
+    if (   abs(millis()-current_error_millis) > error_time_allowed    ){
       if (error_cnt >= max_error_cnt) { 
         set_ams_status(false);
       }
@@ -180,7 +173,14 @@ void loop()
       }
       
     }
+
     
+  //start monitoring all of the cells and and sensors, and outputing them over can and signal wires.
+  if( abs(millis()-current_millis) > meas_time ){
+    //read new cell voltages and actual BMS tasks.
+    read_voltages();
+    //read current sensor/
+    read_current();  
     
     //format and send over can
     CAN_send();
@@ -975,10 +975,13 @@ void read_voltages() {
   if(  (max_cell_voltage < (cell_hard_upper_limit - cell_hyst)) || (pack_voltage < (cell_soft_upper_limit*total_cells))  ) {
     digitalWrite(midpack_output_pin, true);
     midpack_status = true;
+    if ( ams_status == false) {
+      set_ams_status(true);
+    }
   }
   else {
-    digitalWrite(midpack_output_pin, true);
-    midpack_status = true;
+    digitalWrite(midpack_output_pin, false);
+    midpack_status = false;
   }
 };
 

@@ -32,7 +32,7 @@ int midpack_status = 0;
 float cell_data[total_cells+1];
 
 float cell_hard_upper_limit = 2.70;
-float cell_soft_upper_limit = 2.65;
+float cell_soft_upper_limit = 2.60;
 float cell_soft_under_limit = 1.0;
 float cell_hyst = 0.1;
 float cell_balance_window = 0.05;
