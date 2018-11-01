@@ -139,12 +139,12 @@ cell_asic bms_ic[TOTAL_IC];
 void setup()
 {
   Serial.begin(115200);
+  CANSetup();
   quikeval_SPI_connect();
   spi_enable(SPI_CLOCK_DIV128); // This will set the Linduino to have a 1MHz Clock
   LTC681x_init_cfg(TOTAL_IC, bms_ic);
   LTC6811_reset_crc_count(TOTAL_IC,bms_ic);
   LTC6811_init_reg_limits(TOTAL_IC,bms_ic);
-  CANSetup();
   ams_status_setup();
   print_menu();
 }
@@ -833,6 +833,7 @@ void CANSetup() {
       delay(100);
     }
   }
+  
 };
 
 void CAN_send() {
@@ -869,6 +870,7 @@ void CAN_send() {
   CAN.sendMsgBuf(AMS_CAN_ID_data, 0, 8, data_msg);
   delay(10);
   CAN.sendMsgBuf(AMS_CAN_ID_cell, 0, 8, cell_msg);
+  spi_enable(SPI_CLOCK_DIV128);
 };
 
 void balance_cells() {
