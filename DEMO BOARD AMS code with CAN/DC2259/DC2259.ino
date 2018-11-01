@@ -193,7 +193,10 @@ void loop()
     Serial.print("REG STAUS: ");
     Serial.print(regen_status);
     Serial.println();
-
+    Serial.print("Error count: ");
+    Serial.print(error_cnt);
+    Serial.println();
+    
     Serial.println();
     Serial.print("midpack status: ");
     Serial.print(midpack_status);
@@ -928,8 +931,10 @@ void read_current() {
 };
 
 void read_voltages() {
+
   // ADC Cell Measurement and conversion
   run_command(3);
+ 
   // Store cell voltages in cell_data array
   run_command(4);
 
@@ -937,9 +942,12 @@ void read_voltages() {
   for(int each_ic=0; each_ic<TOTAL_IC; each_ic++){
     for(int i=0; i<12; i++){
       cell_data[(each_ic*12)+i+1] =  bms_ic[each_ic].cells.c_codes[i]*0.0001,4;
+       Serial.print("Cell #");
+       Serial.print(i+1);
+       Serial.print("=");
+       Serial.print(bms_ic[each_ic].cells.c_codes[i]*0.0001,4);
     }
   }
-
 
   // Calulate Pack Voltage, minimum voltage and max cell voltage
   pack_voltage = 0;
