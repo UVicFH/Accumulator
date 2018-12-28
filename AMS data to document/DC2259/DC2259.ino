@@ -145,6 +145,7 @@ void setup()
   Serial.begin(115200);
   if(export_excel){
     Serial.println("CLEARSHEET"); // clears starting at row 1
+    //  F() tells arduino to read what ever is inside from flash memory
     Serial.println(F("LABEL,Time,Timer,millis, ams_status, regen_status, error_cnt, midpack_status, pack_current_draw, cell 1 discharge, cell 2 discharge, cell 3 discharge, cell 4 discharge, cell 5 discharge, cell 6 discharge, cell 7 discharge, cell 8 discharge, cell 9 discharge,  cell 10 discharge, cell 11 discharge, cell 12 discharge, cell 13 discharge, cell 14 discharge, cell 15 discharge, cell 16 discharge, cell 17 discharge, cell 18 discharge, cell 19 discharge, cell 20 discharge, cell 21 discharge, cell 22 discharge, cell 23 discharge, cell 24 discharge, cell 25 discharge, cell 26 discharge, cell 27 discharge, cell 28 discharge, cell 29 discharge, cell 30 discharge, cell 31 discharge, cell 32 discharge"));
   }
   
@@ -205,10 +206,9 @@ void loop()
       
       for(int x=0; x<TOTAL_IC; x++) {
         for(int i=0; i<12; i++){
-          //cell_discharge = cell_discharge+cell_discharging[x][i]+",";
+          cell_discharge = cell_discharge+cell_discharging[x][i]+",";
         }
       }
-      Serial.println("*************************************************************************************");
       for(int each_ic=0; each_ic<TOTAL_IC; each_ic++){
         for(int i=0; i<12; i++){
           cell_data[(each_ic*12)+i+1] =  bms_ic[each_ic].cells.c_codes[i]*0.0001,4;
@@ -298,10 +298,12 @@ void run_command(uint32_t cmd)
       wakeup_sleep(TOTAL_IC);
       LTC6811_adcv(ADC_CONVERSION_MODE,ADC_DCP,CELL_CH_TO_CONVERT);
       conv_time = LTC6811_pollAdc();
+      if(!export_excel){
       Serial.print(F("cell conversion completed in:"));
       Serial.print(((float)conv_time/1000), 1);
       Serial.println(F("mS"));
       Serial.println();
+      }
       break;
 
     case 4: // Read Cell Voltage Registers
@@ -564,7 +566,7 @@ void print_menu()
  *************************************************************/
 void print_cells(uint8_t datalog_en)
 {
-
+if(!export_excel){
 
   for (int current_ic = 0 ; current_ic < TOTAL_IC; current_ic++)
   {
@@ -597,6 +599,7 @@ void print_cells(uint8_t datalog_en)
     }
   }
   Serial.println();
+}
 }
 
 /*!****************************************************************************
@@ -979,6 +982,7 @@ void read_voltages() {
   run_command(4);
 
   //re order the cell voltages into another array to ease of use.
+  if(!export_excel){
   for(int each_ic=0; each_ic<TOTAL_IC; each_ic++){
     for(int i=0; i<12; i++){
       cell_data[(each_ic*12)+i+1] =  bms_ic[each_ic].cells.c_codes[i]*0.0001,4;
@@ -988,7 +992,7 @@ void read_voltages() {
        Serial.print(bms_ic[each_ic].cells.c_codes[i]*0.0001,4);
     }
   }
-
+  }
   // Calulate Pack Voltage, minimum voltage and max cell voltage
   pack_voltage = 0;
   min_cell_voltage = 10;
