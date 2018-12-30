@@ -1,0 +1,1 @@
+to install python serial just open command prompt and type:pip install pyserial
