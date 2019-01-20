@@ -72,6 +72,7 @@ Copyright 2017 Linear Technology Corp. (LTC)
 #include "LTC681x.h"
 #include "LTC6811.h"
 #include <SPI.h>
+#include <avr/wdt.h>
 
 #include "AMS.h"
 
@@ -136,6 +137,9 @@ cell_asic bms_ic[TOTAL_IC];
 //change to 1 to export values to excel 
 bool export_excel = 1;
 
+//counter for watchdog
+int loop_count = 0;
+
 
 /*!**********************************************************************
  \brief  Inititializes hardware and variables
@@ -150,7 +154,36 @@ void setup()
   LTC6811_reset_crc_count(TOTAL_IC,bms_ic);
   LTC6811_init_reg_limits(TOTAL_IC,bms_ic);
   ams_status_setup();
+  watchdogSetup(); 
   //print_menu();
+}
+
+/*!**********************************************************************
+ \brief  Inititializes hardware and variables for watchdog
+ ***********************************************************************/
+void watchdogSetup(void)
+{
+  //disables all interrupts on the microcontroller so that configuration is never disrupted and left unfinished.
+  cli();
+  //reset watchdog timer
+  wdt_reset();
+
+ /*
+ WDTCSR configuration:
+ WDIE = 1: Interrupt Enable
+ WDE = 1 :Reset Enable
+ See table for time-out variations:
+ WDP3 = 0 :For 1000ms Time-out
+ WDP2 = 1 :For 1000ms Time-out
+ WDP1 = 1 :For 1000ms Time-out
+ WDP0 = 0 :For 1000ms Time-out
+*/
+// Enter Watchdog Configuration mode:
+WDTCSR |= B00011000;
+// Set Watchdog settings:
+WDTCSR = B01001110;
+//re-enable interrupts
+sei();
 }
 
 /*!*********************************************************************
@@ -158,7 +191,16 @@ void setup()
 ***********************************************************************/
 void loop()
 {
-  
+ //watchdog tester delays loop to see if watchdog resets arduino properly
+ //------------------------------------------------------------------------ 
+// for (int i = 0; i <= loop_count;i++){
+//    digitalWrite(13,HIGH);
+//    delay(100);
+//    digitalWrite(13,LOW);
+//    delay(100);
+// }
+// loop_count++;
+ //------------------------------------------------------------------------ 
   
   //on startup, enable the ams box and output voltage since the only reason to start tsms is to use the ams.
   if (millis() > 5000 && !precharged){
@@ -257,13 +299,30 @@ void loop()
    
     current_millis = millis();
   }
+  
+  //resetting watchdog timer
+  wdt_reset();
 
+  //printing amount of time that the loop went for before being quit by arduino
+//  Serial.print(loop_count);
+//  Serial.print(". Watchdog fed in approx. ");
+//  Serial.print(loop_count*200);
+//  Serial.println(" milliseconds.");
+  
   //balancing the cells is as often as possible since the discharge timmers are not used. this keeps the ltc chips discharging as required.
   balance_cells();
   delay(100);
 
 }
 
+/*!*****************************************
+  \brief watchdog interrupt can exicute code before resetting
+*******************************************/
+ISR(WDT_vect)
+{
+//shouldnt use println because you dont want to any code that could have an error since it could stop the watchdog from resetting
+//Serial.println("watchdog has reset arduino");
+}
 
 /*!*****************************************
   \brief executes the user command
