@@ -1,0 +1,41 @@
+Arduino to Excel by Tristan Cusi
+
+
+Install and downloads needed:
+
+1)Need python on computer
+	Need python 3 
+	https://www.howtogeek.com/197947/how-to-install-python-on-windows/
+
+2)Need to install 2 modules for python 
+	//this module is for python to connect with arduino serial monitor
+	a)to install python serial module just open command prompt and type:pip install pyserial
+	//this module is for python to connect to excel
+	b)to install python xlwt module just open command prompt and type:python -m pip install xlwt
+
+3)Make sure you have all the correct libraries for the accumulator code
+
+
+How to use:
+
+1)Arduino:
+	a)Plug in Arduino via USB cable
+	b)Set up to correct port 
+	c)Start up program and see if its printing anything in serial monitor. If it is then its working
+
+2)Python script:
+	a)Open up code and write in the correct port @ --> ser = serial.Serial('<COM6>', 115200 ) **the "115200" is the baud# and should be fine but if not it should match whatever the DC2259 code has
+	b)Open Command Prompt and navigate to the directory of the python script (easy was to do this is type 'cd' then drag the python script into the prompt which will fill in the path)
+	c)Type "python.exe arduinoToText.py" to run script
+
+3)Exicuting it all:
+	a)Run Arduino code but dont open serial monitor
+	b)Run Python script and it should immedietly start to take in values from serial monitor and export them to the excel file\
+	c)The excel file will be created and stored in the directory of the python script 
+
+
+Possible problems:
+
+Error:If when opening serial monitor you get strange characters printing you probably have the wrong baud# set
+Fix: change baud number to what ever code says (probably  115200)
+
