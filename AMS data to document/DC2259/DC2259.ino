@@ -73,9 +73,19 @@ Copyright 2017 Linear Technology Corp. (LTC)
 #include "LTC6811.h"
 #include <SPI.h>
 #include <avr/wdt.h>
-
 #include "AMS.h"
-
+#include <OneWire.h> 
+#include <DallasTemperature.h>
+/********************************************************************/
+//Stuff for the temp sensors:
+// Data wire is plugged into pin 2 on the Arduino 
+#define ONE_WIRE_BUS 2 
+// Setup a oneWire instance to communicate with any OneWire devices  
+// (not just Maxim/Dallas temperature ICs) 
+OneWire oneWire(ONE_WIRE_BUS); 
+// Pass our oneWire reference to Dallas Temperature. 
+DallasTemperature sensors(&oneWire);
+/********************************************************************/
 #define ENABLED 1
 #define DISABLED 0
 
@@ -155,6 +165,7 @@ void setup()
   LTC6811_init_reg_limits(TOTAL_IC,bms_ic);
   ams_status_setup();
   watchdogSetup(); 
+  sensors.begin(); 
   //print_menu();
 }
 
@@ -228,6 +239,9 @@ void loop()
     
     //read new cell voltages and actual BMS tasks.
     read_voltages(); 
+
+    //read cell temp
+    sensors.requestTemperatures(); // Send the command to get temperature readings 
       
     //read current sensor
     read_current();  
@@ -239,7 +253,7 @@ void loop()
     if(export_excel){
       
       //printing values as stated in the print statement
-      Serial.print((String) millis() +  ams_status+" , "+ regen_status+" , "+ error_cnt+" , "+ midpack_status+" , "+pack_current_draw +" , ");
+      Serial.print((String) millis() +  ams_status+" , "+ regen_status+" , "+ error_cnt+" , "+ midpack_status+" , "+pack_current_draw +" , Temp:"+sensors.getTempCByIndex(0)+" , "+sensors.getTempCByIndex(1)+" , ");
     
       //printing discharge values
       for(int x=0; x<TOTAL_IC; x++) {

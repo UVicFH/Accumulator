@@ -73,9 +73,19 @@ Copyright 2017 Linear Technology Corp. (LTC)
 #include "LTC6811.h"
 #include <SPI.h>
 #include <avr/wdt.h>
-
 #include "AMS.h"
-
+#include <OneWire.h> 
+#include <DallasTemperature.h>
+/********************************************************************/
+//Stuff for the temp sensors:
+// Data wire is plugged into pin 2 on the Arduino 
+#define ONE_WIRE_BUS 2 
+// Setup a oneWire instance to communicate with any OneWire devices  
+// (not just Maxim/Dallas temperature ICs) 
+OneWire oneWire(ONE_WIRE_BUS); 
+// Pass our oneWire reference to Dallas Temperature. 
+DallasTemperature sensors(&oneWire);
+/********************************************************************/
 #define ENABLED 1
 #define DISABLED 0
 
@@ -142,14 +152,15 @@ int loop_count = 0;
 void setup()
 {
   Serial.begin(115200);
-  CANSetup();
+  //CANSetup();
   quikeval_SPI_connect();
   spi_enable(SPI_CLOCK_DIV128); // This will set the Linduino to have a 1MHz Clock
   LTC681x_init_cfg(TOTAL_IC, bms_ic);
   LTC6811_reset_crc_count(TOTAL_IC,bms_ic);
   LTC6811_init_reg_limits(TOTAL_IC,bms_ic);
   ams_status_setup();
-  watchdogSetup(); 
+  watchdogSetup();
+  sensors.begin(); 
   print_menu();
 }
 
@@ -220,8 +231,20 @@ void loop()
     
   //start monitoring all of the cells and and sensors, and outputing them over can and signal wires.
   if( abs(millis()-current_millis) > meas_time ){
+    
     //read new cell voltages and actual BMS tasks.
     read_voltages();
+    Serial.println();
+    Serial.println();
+    Serial.print("Temperature Sensor #1: ");
+    Serial.print(sensors.getTempCByIndex(0));
+    Serial.print("   Temperature Sensor #2: ");
+    Serial.print(sensors.getTempCByIndex(1));
+    Serial.println();
+    
+    //read cell temp
+    sensors.requestTemperatures(); // Send the command to get temperature readings
+    
     //read current sensor/
     read_current();  
     
@@ -1056,4 +1079,3 @@ void read_voltages() {
     midpack_status = false;
   }
 };
-
