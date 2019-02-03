@@ -253,7 +253,7 @@ void loop()
     if(export_excel){
       
       //printing values as stated in the print statement
-      Serial.print((String) millis() +  ams_status+" , "+ regen_status+" , "+ error_cnt+" , "+ midpack_status+" , "+pack_current_draw +" , Temp:"+sensors.getTempCByIndex(0)+" , "+sensors.getTempCByIndex(1)+" , ");
+      Serial.print((String) millis() +  ams_status+" , "+ regen_status+" , "+ error_cnt+" , "+ midpack_status+" , "+pack_current_draw +" , "+sensors.getTempCByIndex(0)+" , "+sensors.getTempCByIndex(1)+" , ");
     
       //printing discharge values
       for(int x=0; x<TOTAL_IC; x++) {
