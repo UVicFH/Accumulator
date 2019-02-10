@@ -76,16 +76,7 @@ Copyright 2017 Linear Technology Corp. (LTC)
 #include "AMS.h"
 #include <OneWire.h> 
 #include <DallasTemperature.h>
-/********************************************************************/
-//Stuff for the temp sensors:
-// Data wire is plugged into pin 2 on the Arduino 
-#define ONE_WIRE_BUS 2 
-// Setup a oneWire instance to communicate with any OneWire devices  
-// (not just Maxim/Dallas temperature ICs) 
-OneWire oneWire(ONE_WIRE_BUS); 
-// Pass our oneWire reference to Dallas Temperature. 
-DallasTemperature sensors(&oneWire);
-/********************************************************************/
+
 #define ENABLED 1
 #define DISABLED 0
 
@@ -130,6 +121,20 @@ const uint8_t MEASURE_CELL = ENABLED; // This is ENABLED or DISABLED
 const uint8_t MEASURE_AUX = DISABLED; // This is ENABLED or DISABLED
 const uint8_t MEASURE_STAT = DISABLED; //This is ENABLED or DISABLED
 const uint8_t PRINT_PEC = DISABLED; //This is ENABLED or DISABLED
+
+/**********************************************************
+  Setup Temp Sensors:
+  1) Setup a oneWire instance to communicate with any OneWire devices  
+     (not just Maxim/Dallas temperature ICs)
+  2) Pass our oneWire reference to Dallas Temperature
+  3) Addresses of the sensor is set when code finishes setup
+***********************************************************/
+OneWire oneWire(temp_output_pin);
+DallasTemperature sensors(&oneWire);
+DeviceAddress sensor1;
+DeviceAddress sensor2;
+DeviceAddress sensor3;
+
 /************************************
   END SETUP
 *************************************/
@@ -162,6 +167,25 @@ void setup()
   watchdogSetup();
   sensors.begin(); 
   print_menu();
+  //finds the addresses of the temp sensors sets them in the code
+  byte addr[8];
+  byte i;
+  int sensor_num = 1;
+  Serial.println();
+  while(oneWire.search(addr)){
+    for (i = 0; i < 8; i++) {  
+      if(sensor_num == 1){
+        sensor1[i] = (uint8_t)addr[i];
+      }else if(sensor_num == 2){
+        sensor2[i] = (uint8_t)addr[i];
+      }else if(sensor_num == 3){
+        sensor3[i] = (uint8_t)addr[i];
+      }else{
+        Serial.println("sum ting wong...shouldnt get here unless there are more sensors hooked up");
+      }
+    }
+    sensor_num++;
+  }
 }
 
 /*!**********************************************************************
@@ -234,16 +258,18 @@ void loop()
     
     //read new cell voltages and actual BMS tasks.
     read_voltages();
-    Serial.println();
-    Serial.println();
-    Serial.print("Temperature Sensor #1: ");
-    Serial.print(sensors.getTempCByIndex(0));
-    Serial.print("   Temperature Sensor #2: ");
-    Serial.print(sensors.getTempCByIndex(1));
-    Serial.println();
     
     //read cell temp
     sensors.requestTemperatures(); // Send the command to get temperature readings
+    Serial.println();
+    Serial.println();
+    Serial.print("Temperature Sensor #1: ");
+    Serial.print(sensors.getTempC(sensor1));
+    Serial.print("   Temperature Sensor #2: ");
+    Serial.print(sensors.getTempC(sensor2));
+    Serial.print("   Temperature Sensor #3: ");
+    Serial.print(sensors.getTempC(sensor3));
+    Serial.println();
     
     //read current sensor/
     read_current();  

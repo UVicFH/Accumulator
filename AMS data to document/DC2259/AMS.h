@@ -13,8 +13,9 @@
 #define air_toggle_pin 2        //output to toggle the AIR contactors
 #define midpack_input_pin 3     //input says if TS is on or not
 #define midpack_output_pin 4    //output to allow charging the pack externally
-#define pack_current_in_pin A1   //input for the current sensor on pack 
-#define SPI_CS_PIN 9 //depends on CAN shield
+#define temp_output_pin 5       //output of temp sensor reading
+#define pack_current_in_pin A1  //input for the current sensor on pack 
+#define SPI_CS_PIN 9            //depends on CAN shield
 MCP_CAN CAN(SPI_CS_PIN);
 
 //#define CCP_A2D_BATCH_READ1 0x1b
