@@ -1036,20 +1036,20 @@ void read_current() {
 
 void read_temperature(){
 
-sensors.requestTemperatures(); // Send the command to get temperature readings
+  sensors.requestTemperatures(); // Send the command to get temperature readings
 
-    Serial.println();
-    Serial.println();
-    Serial.print("Temperature Sensor #1: ");
-    Serial.print(sensors.getTempC(sensor1));
-    Serial.print("   Temperature Sensor #2: ");
-    Serial.print(sensors.getTempC(sensor2));
-    Serial.print("   Temperature Sensor #3: ");
-    Serial.print(sensors.getTempC(sensor3));
-    Serial.println();
+  Serial.println();
+  Serial.println();
+  Serial.print("Temperature Sensor #1: ");
+  Serial.print(sensors.getTempC(sensor1));
+  Serial.print("   Temperature Sensor #2: ");
+  Serial.print(sensors.getTempC(sensor2));
+  Serial.print("   Temperature Sensor #3: ");
+  Serial.print(sensors.getTempC(sensor3));
+  Serial.println();
 
-    if(( sensors.getTempC(sensor1) || sensors.getTempC(sensor2) || sensors.getTempC(sensor3) ) > max_cell_temp) error_cnt++;
-    if(( sensors.getTempC(sensor1) || sensors.getTempC(sensor2) || sensors.getTempC(sensor3) ) < min_cell_temp) error_cnt++;
+  if(( sensors.getTempC(sensor1) || sensors.getTempC(sensor2) || sensors.getTempC(sensor3) ) > max_cell_temp) error_cnt++;
+  if(( sensors.getTempC(sensor1) || sensors.getTempC(sensor2) || sensors.getTempC(sensor3) ) < min_cell_temp) error_cnt++;
   
 };
 
