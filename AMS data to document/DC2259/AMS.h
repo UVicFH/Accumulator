@@ -48,6 +48,8 @@ int max_error_cnt = 5;
 int current_error_millis;
 int error_time_allowed = 2000;  //This means if you get 5 errors in 2 sec, something is wrong
 
+int max_cell_temp = 65;
+int min_cell_temp = -40;
 int max_cell_num;
 int min_cell_num;
 float max_cell_voltage;

@@ -266,7 +266,7 @@ void loop()
     read_voltages(); 
 
     //read cell temp
-    sensors.requestTemperatures(); // Send the command to get temperature readings 
+    read_temperature();
       
     //read current sensor
     read_current();  
@@ -278,7 +278,7 @@ void loop()
     if(export_excel){
       
       //printing values as stated in the print statement
-      Serial.print((String) millis() +  ams_status+" , "+ regen_status+" , "+ error_cnt+" , "+ midpack_status+" , "+pack_current_draw +" , 1"+sensors.getTempC(sensor1)+" , "+sensors.getTempC(sensor2)+" , "+sensors.getTempC(sensor3)+" , ");
+      Serial.print((String) millis() +  ams_status+" , "+ regen_status+" , "+ error_cnt+" , "+ midpack_status+" , "+pack_current_draw +" , "+sensors.getTempC(sensor1)+" , "+sensors.getTempC(sensor2)+" , "+sensors.getTempC(sensor3)+" , ");
     
       //printing discharge values
       for(int x=0; x<TOTAL_IC; x++) {
@@ -1067,6 +1067,26 @@ void read_current() {
   int adc_in = analogRead(pack_current_in_pin);
   float adc_voltage = adc_in/1024.0*5.0;
   pack_current_draw = (adc_voltage-2.5)*(1.0/0.004) + 1.22;  //This formula is from the datasheet for current sensor i=(v-(Vsupply/2))*(1/g)*(5/Vsupply), the 1.22 is just an offset value
+};
+
+void read_temperature(){
+
+  sensors.requestTemperatures(); // Send the command to get temperature readings
+
+  if(!export_excel){
+    Serial.println();
+    Serial.println();
+    Serial.print("Temperature Sensor #1: ");
+    Serial.print(sensors.getTempC(sensor1));
+    Serial.print("   Temperature Sensor #2: ");
+    Serial.print(sensors.getTempC(sensor2));
+    Serial.print("   Temperature Sensor #3: ");
+    Serial.print(sensors.getTempC(sensor3));
+    Serial.println();
+  }
+  if(( sensors.getTempC(sensor1) || sensors.getTempC(sensor2) || sensors.getTempC(sensor3) ) > max_cell_temp) error_cnt++;
+  if(( sensors.getTempC(sensor1) || sensors.getTempC(sensor2) || sensors.getTempC(sensor3) ) < min_cell_temp) error_cnt++;
+  
 };
 
 void read_voltages() {
