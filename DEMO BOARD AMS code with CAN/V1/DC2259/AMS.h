@@ -26,7 +26,7 @@ const int total_cells = TOTAL_IC*12;
 /*!*********************************************************************
   \AMS variables
 ***********************************************************************/
-int debugging = 0;      //FOR serial debugging print statements
+int debugging = 1;      //FOR serial debugging print statements
 bool DEAD_charge = 0;   //FOR manual relay turn on for charging dead pack
 
 int precharged = 0;

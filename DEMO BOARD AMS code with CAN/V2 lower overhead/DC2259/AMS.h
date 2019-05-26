@@ -36,8 +36,8 @@ bool dctoBits[4] = {true, false, true, false}; //!< Discharge time value // Dcto
 /*!*********************************************************************
   \AMS variables
 ***********************************************************************/
-int debugging = 0;      //FOR serial debugging print statements
-bool DEAD_charge = 1;   //FOR manual relay turn on for charging dead pack
+int debugging = 1;      //FOR serial debugging print statements
+bool DEAD_charge = 0;   //FOR manual relay turn on for charging dead pack
 
 int precharged = 0;
 int precharge_time = 1000;
@@ -63,11 +63,11 @@ bool AIRS_state = false;
 int error_cnt = 0;
 int max_error_cnt = 5;
 int max_record = 0;
-int current_error_millis;
-int error_time_allowed = 2000;  //This means if you get 5 errors in 2 sec, something is wrong
+unsigned long current_error_millis = 0;
+int error_time_allowed = 4000;  //This means if you get 5 errors in 2 sec, something is wrong
 
 int max_cell_temp = 65;
-int min_cell_temp = -40;
+int min_cell_temp = 0;
 float temp_sen1;
 float temp_sen2;
 
@@ -80,5 +80,5 @@ float pack_voltage;
 float pack_current_draw;
 
 unsigned long current_millis;
-int meas_time = 100; //momintor pack every 2sec
+int meas_time = 50; //momintor pack every 2sec
 

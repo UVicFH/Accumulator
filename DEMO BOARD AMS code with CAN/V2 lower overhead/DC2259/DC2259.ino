@@ -63,6 +63,8 @@ DeviceAddress sensor2;
 
 cell_asic bms_ic[TOTAL_IC];
 
+int loopcnt = 0;
+
 /*!**********************************************************************
  \brief  Inititializes hardware and variables
  ***********************************************************************/
@@ -73,6 +75,7 @@ void setup()
   Serial.begin(115200);
   CANSetup();
   quikeval_SPI_connect();
+  //SPI.setDataMode(3);
   spi_enable(SPI_CLOCK_DIV128); // This will set the Linduino to have a 1MHz Clock
   LTC6811_init_cfg(TOTAL_IC, bms_ic);
   for (uint8_t current_ic = 0; current_ic<TOTAL_IC;current_ic++) 
@@ -106,6 +109,7 @@ void setup()
         sensor1[i] = (uint8_t)addr[i];
       }else if(sensor_num == 2){
         sensor2[i] = (uint8_t)addr[i];
+        Serial.println("found them");
       }else{
         if(debugging) {
           Serial.println();
@@ -160,7 +164,7 @@ void loop()
       digitalWrite(precharged_pin, 0);
     }
 
-    if( millis() > 2000) {
+    if( millis() > 3500) {
       //Turn on the mid pack relay
       digitalWrite(midpack_output_pin, 1);
       midpack_status = 1;
@@ -171,7 +175,12 @@ void loop()
     midpack_status = 0;
   }
 
- 
+//  if( millis() > 2000) {
+//      while(true){
+//        Serial.println(loopcnt++);
+//      }
+//  }
+
   //To account for errors in reading a error counter is updated where ever a error occurs. if the error is deadly, the function would stop ams right there and then
   //Otherwise this counter is used. if it counts too high, we trip the ams otherwise assume a glitch and carry on with our lives.
   if (   abs(millis()-current_error_millis) > error_time_allowed    ){
@@ -181,15 +190,19 @@ void loop()
       current_error_millis = millis();
     }
     else{
+      set_ams_status(true);
       error_cnt = 0;
       max_record = error_cnt;
-      set_ams_status(true);
       current_error_millis = millis();
     }
+    Serial.println("er ch");
   }
   
   //start monitoring all of the cells and and sensors, and outputing them over can and signal wires.
   if( abs(millis()-current_millis) > meas_time ){
+
+    //read cell temp
+    read_temperature();
     
     //read new cell voltages and actual BMS tasks.
     read_voltages();
@@ -201,7 +214,7 @@ void loop()
     CAN_send();
 
     //Serial debugging print statements, can be removed once code is finalized and finished, hahahahahahahahahahahahahahahaha, never gonna happen.
-    if(debugging) {
+    if(1) {
       Serial.println();
       Serial.print("AMS STAUS: ");
       Serial.print(ams_status);
@@ -213,25 +226,25 @@ void loop()
       Serial.print(error_cnt);
       Serial.println();
       
-      Serial.println();
-      Serial.print("midpack status: ");
-      Serial.print(midpack_status);
-      Serial.println();
-      
+//      Serial.println();
+//      Serial.print("midpack status: ");
+//      Serial.print(midpack_status);
+//      Serial.println();
+//      
       Serial.println();
       Serial.print("pack voltage: ");
       Serial.print(pack_voltage);
       Serial.println();
-  
+
       Serial.println();
       Serial.print("pack current: ");
       Serial.print(pack_current_draw);
       Serial.println();   
 
-      Serial.println();
-      Serial.print("charge ctrl: ");
-      Serial.print(digitalRead(midpack_input_pin));
-      Serial.println(); 
+//      Serial.println();
+//      Serial.print("charge ctrl: ");
+//      Serial.print(digitalRead(midpack_input_pin));
+//      Serial.println(); 
 
       Serial.println();
       Serial.print("Temperature Sensor #1: ");
@@ -240,17 +253,18 @@ void loop()
       Serial.print(temp_sen2);
       Serial.println();
 
-      Serial.println("Discharging or not:");
-      for(int x=0; x<TOTAL_IC; x++) {
-        for(int i=0; i<12; i++){
-          Serial.print("C");
-          Serial.print(i);
-          Serial.print(": ");
-          Serial.print(cell_discharging[x][i]);
-          Serial.print("  ");
-        }
-      Serial.println();
-      }
+//      Serial.println("Discharging or not:");
+//      for(int x=0; x<TOTAL_IC; x++) {
+//        for(int i=0; i<12; i++){
+//          Serial.print("C");
+//          Serial.print(i);
+//          Serial.print(": ");
+//          Serial.print(cell_discharging[x][i]);
+//          Serial.print("  ");
+//        }
+//      Serial.println();
+//      }
+
     }
     
     //the order of the data being read back seemed to be wrong so this function is used to correct that. it works but not 100% sure exacttly why. just leave it in untill you know for sure.
@@ -469,6 +483,7 @@ void read_current() {
 };
 
 void read_temperature(){
+  sensors.begin();
   sensors.requestTemperatures(); // Send the command to get temperature readings
   temp_sen1 = sensors.getTempC(sensor1);
   temp_sen2 = sensors.getTempC(sensor2);
@@ -480,13 +495,19 @@ void read_temperature(){
 void read_voltages() {
   int8_t error = 0;
   uint32_t conv_time = 0;
-  quikeval_SPI_connect();
   spi_enable(SPI_CLOCK_DIV128);
+
+  //wakeup_sleep(TOTAL_IC);
+  //LTC6811_wrcfg(TOTAL_IC,bms_ic);
 
   // ADC Cell Measurement and conversion
   wakeup_sleep(TOTAL_IC);
+  wakeup_idle(TOTAL_IC);
   LTC6811_adcv(ADC_CONVERSION_MODE,ADC_DCP,CELL_CH_TO_CONVERT);
+  wakeup_sleep(TOTAL_IC);
+  wakeup_idle(TOTAL_IC);
   conv_time = LTC6811_pollAdc();
+  
   if(debugging){
     Serial.print(F("cell conversion completed in:"));
     Serial.print(((float)conv_time/1000), 1);
@@ -496,6 +517,7 @@ void read_voltages() {
  
   // Store cell voltages in cell_data array
   wakeup_sleep(TOTAL_IC);
+  wakeup_idle(TOTAL_IC);
   error = LTC6811_rdcv(0, TOTAL_IC,bms_ic); // Set to read back all cell voltage registers
   check_error(error);
   print_cells();
@@ -524,14 +546,20 @@ void read_voltages() {
       min_cell_voltage = cell_data[i];
       min_cell_num = i;
     }
-    if(cell_data[i] >= cell_hard_upper_limit) {
-      //add an error count
+    if((cell_data[i] >= cell_hard_upper_limit) && (cell_data[i] <= 6.0)) {
+      //add an error count  
       error_cnt++;      
     }
-    if(cell_data[i] <= cell_under_limit) {
+    if((cell_data[i] <= cell_under_limit) && (i == 24)    ) {
       //add an error count
-      error_cnt++;      
-    }
+      error_cnt++;    
+    } 
+//    if ((cell_data[i] <= cell_under_limit) && (i == 12)    ){
+//      cell_data[i] = cell_data[i]+1.2; 
+//    } 
+//    if (cell_data[i] <= cell_under_limit) {
+//      error_cnt++; 
+//    }
   }
 
 };
