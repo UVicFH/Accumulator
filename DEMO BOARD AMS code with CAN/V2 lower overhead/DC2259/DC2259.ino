@@ -197,24 +197,29 @@ void loop()
     }
     Serial.println("er ch");
   }
+
+  if( abs(millis()-current_can_millis) > can_time ){
+      //format and send over can
+      
+      //read cell temp
+      read_temperature();
+    
+      //read current sensor/
+      read_current(); 
+      
+      CAN_send();
+      current_can_millis = millis();
+      
+  }
   
   //start monitoring all of the cells and and sensors, and outputing them over can and signal wires.
   if( abs(millis()-current_millis) > meas_time ){
-
-    //read cell temp
-    read_temperature();
-    
+ 
     //read new cell voltages and actual BMS tasks.
     read_voltages();
     
-    //read current sensor/
-    read_current();  
-    
-    //format and send over can
-    CAN_send();
-
     //Serial debugging print statements, can be removed once code is finalized and finished, hahahahahahahahahahahahahahahaha, never gonna happen.
-    if(1) {
+    if(0) {
       Serial.println();
       Serial.print("AMS STAUS: ");
       Serial.print(ams_status);
@@ -285,8 +290,11 @@ void loop()
   //balancing the cells is as often as possible since the discharge timmers are not used. this keeps the ltc chips discharging as required.
   balance_cells();
   
+  //Update the time
+  current_millis = millis();
+  
   //Processor dead time
-  delay(100);
+  delay(10);
 
 }
 
@@ -406,8 +414,8 @@ void CAN_send() {
   //packet 0x69
   uint8_t data_msg[8];
   // pack voltage 2bytes 100*voltage
-  data_msg[0] = (int)(pack_voltage*100)>>8;
-  data_msg[1] = (int)(pack_voltage*100);
+  data_msg[0] = (unsigned int)(pack_voltage*100)>>8;
+  data_msg[1] = (unsigned int)(pack_voltage*100);
   // pack temp    2bytes 100*temp
   data_msg[2] = (int)(((temp_sen1+temp_sen2)/2)*100) >>8;
   data_msg[3] = (int)(((temp_sen1+temp_sen2)/2)*100);
@@ -423,13 +431,13 @@ void CAN_send() {
   //cell max num   1bytes cell#
   cell_msg[0] = max_cell_num;
   //cell volts max 2bytes 1000*votls
-  cell_msg[1] = (int)(max_cell_voltage*1000) >>8;
-  cell_msg[2] = (int)(max_cell_voltage*1000);
+  cell_msg[1] = (unsigned int)(max_cell_voltage*1000) >>8;
+  cell_msg[2] = (unsigned int)(max_cell_voltage*1000);
   //cell min num   1bytes cell#
   cell_msg[3] = min_cell_num;
   //cell volts min 2bytes 1000*votls
-  cell_msg[4] = (int)(min_cell_voltage*1000)>>8;
-  cell_msg[5] = (int)(min_cell_voltage*1000);
+  cell_msg[4] = (unsigned int)(min_cell_voltage*1000)>>8;
+  cell_msg[5] = (unsigned int)(min_cell_voltage*1000);
 
   
   CAN.sendMsgBuf(AMS_CAN_ID_data, 0, 8, data_msg);
@@ -520,7 +528,7 @@ void read_voltages() {
   wakeup_idle(TOTAL_IC);
   error = LTC6811_rdcv(0, TOTAL_IC,bms_ic); // Set to read back all cell voltage registers
   check_error(error);
-  print_cells();
+  //print_cells();
 
   //re order the cell voltages into another array to ease of use.
   for(int each_ic=0; each_ic<TOTAL_IC; each_ic++){

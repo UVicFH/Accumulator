@@ -36,8 +36,8 @@ bool dctoBits[4] = {true, false, true, false}; //!< Discharge time value // Dcto
 /*!*********************************************************************
   \AMS variables
 ***********************************************************************/
-int debugging = 1;      //FOR serial debugging print statements
-bool DEAD_charge = 0;   //FOR manual relay turn on for charging dead pack
+int debugging = 0;      //FOR serial debugging print statements
+bool DEAD_charge = 1;   //FOR manual relay turn on for charging dead pack
 
 int precharged = 0;
 int precharge_time = 1000;
@@ -80,5 +80,7 @@ float pack_voltage;
 float pack_current_draw;
 
 unsigned long current_millis;
+unsigned long current_can_millis;
+int can_time = 10;
 int meas_time = 50; //momintor pack every 2sec
 
