@@ -31,45 +31,45 @@ SPI2X  SPR1  SPR0  Frequency  Uno_Frequency
 
 @endverbatim
 
-REVISION HISTORY
-$Revision: 3018 $
-$Date: 2014-12-01 15:53:20 -0800 (Mon, 01 Dec 2014) $
 
-Copyright (c) 2013, Linear Technology Corp.(LTC)
+Copyright 2018(c) Analog Devices, Inc.
+
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
+ - Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+ - Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in
+   the documentation and/or other materials provided with the
+   distribution.
+ - Neither the name of Analog Devices, Inc. nor the names of its
+   contributors may be used to endorse or promote products derived
+   from this software without specific prior written permission.
+ - The use of this software may or may not infringe the patent rights
+   of one or more patent holders.  This license does not release you
+   from the requirement that you obtain separate licenses from these
+   patent holders to use this software.
+ - Use of the software either in source or binary form, must be run
+   on or directly connected to an Analog Devices Inc. component.
 
-1. Redistributions of source code must retain the above copyright notice, this
-   list of conditions and the following disclaimer.
-2. Redistributions in binary form must reproduce the above copyright notice,
-   this list of conditions and the following disclaimer in the documentation
-   and/or other materials provided with the distribution.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-The views and conclusions contained in the software and documentation are those
-of the authors and should not be interpreted as representing official policies,
-either expressed or implied, of Linear Technology Corp.
-
-The Linear Technology Linduino is not affiliated with the official Arduino team.
-However, the Linduino is only possible because of the Arduino team's commitment
-to the open-source community.  Please, visit http://www.arduino.cc and
-http://store.arduino.cc , and consider a purchase that will help fund their
-ongoing work.
+THIS SOFTWARE IS PROVIDED BY ANALOG DEVICES "AS IS" AND ANY EXPRESS OR
+IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, NON-INFRINGEMENT,
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL ANALOG DEVICES BE LIABLE FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, INTELLECTUAL PROPERTY RIGHTS, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+//! @ingroup Linduino
+//! @{
 //! @defgroup LT_SPI LT_SPI: Routines to communicate with ATmega328P's hardware SPI port.
+//! @}
 
 /*! @file
     @ingroup LT_SPI
@@ -86,57 +86,58 @@ ongoing work.
 // Return 0 if successful, 1 if failed
 void spi_transfer_byte(uint8_t cs_pin, uint8_t tx, uint8_t *rx)
 {
-    output_low(cs_pin);                 //! 1) Pull CS low
+  output_low(cs_pin);                 //! 1) Pull CS low
 
-    *rx = SPI.transfer(tx);             //! 2) Read byte and send byte
-    
-    output_high(cs_pin);                //! 3) Pull CS high
+  *rx = SPI.transfer(tx);             //! 2) Read byte and send byte
+
+  output_high(cs_pin);                //! 3) Pull CS high
 }
 
 // Reads and sends a word
 // Return 0 if successful, 1 if failed
 void spi_transfer_word(uint8_t cs_pin, uint16_t tx, uint16_t *rx)
 {
-    union
-    {
-        uint8_t b[2];
-        uint16_t w;
-    } data_tx;
-    
-    union
-    {
-        uint8_t b[2];
-        uint16_t w;
-    } data_rx;
+  union
+  {
+    uint8_t b[2];
+    uint16_t w;
+  } data_tx;
 
-    data_tx.w = tx;
+  union
+  {
+    uint8_t b[2];
+    uint16_t w;
+  } data_rx;
 
-    output_low(cs_pin);                         //! 1) Pull CS low
+  data_tx.w = tx;
 
-    data_rx.b[1] = SPI.transfer(data_tx.b[1]);  //! 2) Read MSB and send MSB
-    data_rx.b[0] = SPI.transfer(data_tx.b[0]);  //! 3) Read LSB and send LSB
+  output_low(cs_pin);                         //! 1) Pull CS low
 
-    *rx = data_rx.w;
+  data_rx.b[1] = SPI.transfer(data_tx.b[1]);  //! 2) Read MSB and send MSB
+  data_rx.b[0] = SPI.transfer(data_tx.b[0]);  //! 3) Read LSB and send LSB
 
-    output_high(cs_pin);                        //! 4) Pull CS high
+  *rx = data_rx.w;
+
+  output_high(cs_pin);                        //! 4) Pull CS high
 }
 
 // Reads and sends a byte array
 void spi_transfer_block(uint8_t cs_pin, uint8_t *tx, uint8_t *rx, uint8_t length)
 {
-    int8_t i;
-    
-    output_low(cs_pin);                 //! 1) Pull CS low
-    
-    for(i=(length-1);  i >= 0; i--)
-        rx[i] = SPI.transfer(tx[i]);    //! 2) Read and send byte array
-    
-    output_high(cs_pin);                //! 3) Pull CS high
+  int8_t i;
+
+  output_low(cs_pin);                 //! 1) Pull CS low
+
+  for (i=(length-1);  i >= 0; i--)
+    rx[i] = SPI.transfer(tx[i]);    //! 2) Read and send byte array
+
+  output_high(cs_pin);                //! 3) Pull CS high
 }
 
 // Connect SPI pins to QuikEval connector through the Linduino MUX. This will disconnect I2C.
 void quikeval_SPI_connect()
 {
+  pinMode(QUIKEVAL_CS, OUTPUT);
   output_high(QUIKEVAL_CS); //! 1) Pull Chip Select High
 
   //! 2) Enable Main SPI
@@ -174,36 +175,47 @@ void spi_disable()
 // Write a data byte using the SPI hardware
 void spi_write(int8_t  data)  // Byte to be written to SPI port
 {
+#if defined(ARDUINO_ARCH_AVR)
   SPDR = data;                  //! 1) Start the SPI transfer
   while (!(SPSR & _BV(SPIF)));  //! 2) Wait until transfer complete
+#else
+  SPI.transfer(data);
+#endif
+
 }
 
 // Read and write a data byte using the SPI hardware
 // Returns the data byte read
 int8_t spi_read(int8_t  data) //!The data byte to be written
 {
+#if defined(ARDUINO_ARCH_AVR)
   SPDR = data;                  //! 1) Start the SPI transfer
   while (!(SPSR & _BV(SPIF)));  //! 2) Wait until transfer complete
   return SPDR;                  //! 3) Return the data read
+#else
+  return SPI.transfer(data);
+#endif
+
+
 }
 
 // Below are implementations of spi_read, etc. that do not use the
-// Arduino SPI library.  To use these functions, uncomment them and comment out 
-// the correcsponding function above. 
-// 
+// Arduino SPI library.  To use these functions, uncomment them and comment out
+// the correcsponding function above.
+//
 // // Reads and sends a byte
 // // Return 0 if successful, 1 if failed
 // uint8_t spi_transfer_byte(uint8_t cs_pin, uint8_t tx, uint8_t *rx)
-// {     
+// {
 //     output_low(cs_pin);                 //! 1) Pull CS low
-//     
+//
 //     *rx = spi_read(tx);                 //! 2) Read byte and send byte
-//     
+//
 //     output_high(cs_pin);                //! 3) Pull CS high
-//     
-//     return(0); 
+//
+//     return(0);
 // }
-// 
+//
 // // Reads and sends a word
 // // Return 0 if successful, 1 if failed
 // uint8_t spi_transfer_word(uint8_t cs_pin, uint16_t tx, uint16_t *rx)
@@ -213,52 +225,52 @@ int8_t spi_read(int8_t  data) //!The data byte to be written
 //         uint8_t b[2];
 //         uint16_t w;
 //     } data_tx;
-//     
+//
 //     union
 //     {
 //         uint8_t b[2];
 //         uint16_t w;
 //     } data_rx;
-// 
+//
 //     data_tx.w = tx;
-//     
+//
 //     output_low(cs_pin);                     //! 1) Pull CS low
-//    
+//
 //     data_rx.b[1] = spi_read(data_tx.b[1]);  //! 2) Read MSB and send MSB
 //     data_rx.b[0] = spi_read(data_tx.b[0]);  //! 3) Read LSB and send LSB
 //     *rx = data_rx.w;
-//     
+//
 //     output_high(cs_pin);                    //! 4) Pull CS high
-// 
-//     return(0); 
+//
+//     return(0);
 // }
-// 
+//
 // // Reads and sends a byte array
 // // Return 0 if successful, 1 if failed
 // uint8_t spi_transfer_block(uint8_t cs_pin, uint8_t *tx, uint8_t *rx, uint8_t length)
 // {
 //     int8_t i;
-//     
+//
 //     output_low(cs_pin);                 //! 1) Pull CS low
-//     
+//
 //     for(i=0;  i < length; i++)
 //         rx[i] = spi_read(tx[i]);        //! 2) Read and send byte array
-//     
+//
 //     output_high(cs_pin);                //! 3) Pull CS high
-//     
-//     return(0); 
+//
+//     return(0);
 // }
-// 
+//
 // // Connect SPI pins to QuikEval connector through the Linduino MUX. This will disconnect I2C.
 // void quikeval_SPI_connect()
 // {
 //   output_high(QUIKEVAL_CS); //! 1) Pull Chip Select High
-// 
+//
 //   //! 2) Enable Main SPI
 //   pinMode(QUIKEVAL_MUX_MODE_PIN, OUTPUT);
 //   digitalWrite(QUIKEVAL_MUX_MODE_PIN, LOW);
 // }
-// 
+//
 // // Configure the SPI port for 4MHz SCK.
 // // This function or spi_enable() must be called
 // // before using the other SPI routines.
@@ -266,7 +278,7 @@ int8_t spi_read(int8_t  data) //!The data byte to be written
 // {
 //   spi_enable(SPI_CLOCK_DIV32);  //! 2) Configure the spi port for 4MHz SCK
 // }
-// 
+//
 // // Setup the processor for hardware SPI communication.
 // // Must be called before using the other SPI routines.
 // // Alternatively, call quikeval_SPI_connect(), which automatically
@@ -285,7 +297,7 @@ int8_t spi_read(int8_t  data) //!The data byte to be written
 //   SPSR = (SPSR & ~SPI_2XCLOCK_MASK) | ((spi_clock_divider >> 2) & SPI_2XCLOCK_MASK);
 //   SPCR |= _BV(SPE);                 //! 5) Enable the SPI port
 // }
-// 
+//
 // // Disable the SPI hardware port
 // void spi_disable()
 // {
