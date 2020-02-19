@@ -14,7 +14,7 @@ Accumulator code for 2020 as developed by Chad McColm. Source originally from de
 #include <mcp_can.h>
 #include <SPI.h>
 #include <avr/wdt.h>
-#include <OneWire.h> 
+#include <OneWire.h>
 #include <DallasTemperature.h>
 
 // Define enabled and disabled to use rather than 1 and 0 to make things more easy to read
@@ -37,6 +37,8 @@ const uint8_t ADC_CONVERSION_MODE = MD_7KHZ_3KHZ;//MD_7KHZ_3KHZ; //MD_26HZ_2KHZ;
 const uint8_t ADC_DCP = DCP_DISABLED; // See LTC6811_daisy.h for Options
 const uint8_t CELL_CH_TO_CONVERT = CELL_CH_ALL; // See LTC6811_daisy.h for Options
 
+#define debugging 0
+
 // Define CAN message IDs
 #define AMS_CAN_ID_data 105
 #define AMS_CAN_ID_cell 112
@@ -47,7 +49,7 @@ const uint8_t CELL_CH_TO_CONVERT = CELL_CH_ALL; // See LTC6811_daisy.h for Optio
 #define air_toggle_pin 2        // Turns on AIRs if ENABLED
 #define midpack_input_pin 3     // Input for if TS is switched on
 #define midpack_output_pin 4    // When ENABLED, pack may be charged
-#define temp_output_pin 5       //output of temp sensor reading
+#define temp_input_pin 5       // output of temp sensor reading
 #define pack_current_in_pin A1  // Current sensor input
 #define SPI_CS_PIN 9            // Chip select pin of CAN shield
 
@@ -56,8 +58,10 @@ const uint8_t CELL_CH_TO_CONVERT = CELL_CH_ALL; // See LTC6811_daisy.h for Optio
 #define softUpperLimit 2.6
 
 // Configuration of the temperature sensors
-OneWire oneWire(temp_output_pin);
+OneWire oneWire(temp_input_pin);
 DallasTemperature sensors(&oneWire);
+DeviceAddress sensor1;
+DeviceAddress sensor2;
 
 // For CAN initialization
 MCP_CAN CAN(SPI_CS_PIN);
@@ -111,7 +115,8 @@ void setup(){
   Serial.begin(115200);
 
   // Start the Dallas Temperature sensors library
-  sensors.begin();
+//  sensors.begin();
+  setupTempSensors();
   
   // Enable the watchdog with a 4 second overflow
   wdt_enable(WDTO_4S);
@@ -391,10 +396,13 @@ void sendCAN() {
 
 // Read temperatures from Dallas one wire temperature sensors
 void readTemperatures(){
+  sensors.begin();
+  sensors.requestTemperatures(); // Send the command to get temperature readings
+//  packTemperature1 = sensors.getTempC(sensor1);
+//  packTemperature2 = sensors.getTempC(sensor2);
   
   packTemperature1 = sensors.getTempCByIndex(0);
   packTemperature2 = sensors.getTempCByIndex(1);
-  
 }
 
 /*!************************************************************
@@ -433,4 +441,28 @@ void printCells(uint8_t datalog_en)
     }
   }
   Serial.println();
+}
+
+void setupTempSensors() {
+  sensors.begin();
+  
+  byte addr[8];
+  byte i;
+  int sensor_num = 1;
+  while (oneWire.search(addr)) {
+    for (i = 0; i < 8; i++) {  
+      if (sensor_num == 1) {
+        sensor1[i] = (uint8_t) addr[i];
+      } else if (sensor_num == 2) {
+        sensor2[i] = (uint8_t) addr[i];
+        Serial.println("found them");
+      } else {
+        if (debugging) {
+          Serial.println("\nsum ting wong... shouldnt get here unless there are more sensors hooked up");
+        }
+      }
+    }
+    
+    sensor_num++;
+  }
 }
