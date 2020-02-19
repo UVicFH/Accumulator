@@ -54,8 +54,10 @@ const uint8_t CELL_CH_TO_CONVERT = CELL_CH_ALL; // See LTC6811_daisy.h for Optio
 #define SPI_CS_PIN 9            // Chip select pin of CAN shield
 
 // Define cell limits
-#define hardUpperLimit 2.7
-#define softUpperLimit 2.6
+#define v_hardUpperLimit 2.7
+#define v_softUpperLimit 2.6
+#define v_lowerLimit .7
+#define temp_upperLimit 65
 
 // Configuration of the temperature sensors
 OneWire oneWire(temp_input_pin);
@@ -73,6 +75,7 @@ unsigned long lastSetStatus = 0;
 unsigned long lastReadCurrent = 0;
 unsigned long lastBalanceCells = 0;
 unsigned long lastSendCAN = 0;
+
 unsigned long startPrecharge = 0;
 int prechargeDuration = 4000;
 
@@ -132,7 +135,9 @@ void setup(){
 
   // Make place for QuickEval software to connect
   quikeval_SPI_connect();
-  spi_enable(SPI_CLOCK_DIV16); // This will set the Linduino to have a 1MHz Clock
+//  spi_enable(SPI_CLOCK_DIV16); // This will set the Linduino to have a 1MHz Clock
+  spi_enable(SPI_CLOCK_DIV128); // Restores the required SPI clock speed
+
 
   // Generate and write a base configuration to chips
   LTC681x_init_cfg(TOTAL_IC, bms_ic);
@@ -168,7 +173,7 @@ void loop(){
 //    Serial.println(minCellNumber);
 //    Serial.print("Pack Voltage: \t");
 //    Serial.println(packVoltage, 4);
-//    printCells(DISABLED);
+    printCells(DISABLED);
     lastReadVoltages = currentLoopTime;
   }
   
@@ -277,7 +282,7 @@ void readVoltages(){
     for (int i=0; i<bms_ic[0].ic_reg.cell_channels; i++){
         
         float currentCellVoltage = bms_ic[current_ic].cells.c_codes[i]*0.0001;
-        if(currentCellVoltage < minCellVoltage){
+        if (currentCellVoltage < minCellVoltage){
           minCellVoltage = currentCellVoltage;
           minCellNumber = currentCellNumber;
         }
@@ -287,23 +292,23 @@ void readVoltages(){
         }
         packVoltage += currentCellVoltage;
         currentCellNumber++;
-        
       }
   }
-  
 }
 
 void setStatuses(){
 
   // if highest cell has exceeded hard upper limit, shut down the pack
-  if(maxCellVoltage > hardUpperLimit) AMSStatus = DISABLED;
+  if(maxCellVoltage > v_hardUpperLimit || minCellVoltage < v_lowerLimit ||
+        packTemperature1 > temp_upperLimit || packTemperature2 > temp_upperLimit) {
+    AMSStatus = DISABLED;
+  }
   else AMSStatus = ENABLED;
   digitalWrite(AMS_STATUS_PIN, AMSStatus);
   
   // if highest cell has exceeded soft upper limit, stop regen
-  if(maxCellVoltage > softUpperLimit) regenStatus = DISABLED;
+  if(maxCellVoltage > v_softUpperLimit) regenStatus = DISABLED;
   else regenStatus = ENABLED;
-  
 }
 
 void balanceCells() {
@@ -320,7 +325,7 @@ void balanceCells() {
 
       // Get the cell voltage and check against the upper limit and the distance from miminum to see if discharging necessary
       float currentCellVoltage = bms_ic[current_ic].cells.c_codes[i]*0.0001;
-      if(currentCellVoltage > (softUpperLimit + hardUpperLimit)/2 || currentCellVoltage > minCellVoltage + 0.1) dischargeMe[i] = 1;
+      if(currentCellVoltage > (v_softUpperLimit + v_hardUpperLimit)/2 || currentCellVoltage > minCellVoltage + 0.1) dischargeMe[i] = 1;
       else dischargeMe[i] = 0;
       
     }
@@ -390,7 +395,8 @@ void sendCAN() {
   CAN.sendMsgBuf(AMS_CAN_ID_data, 0, 8, data);
   CAN.sendMsgBuf(AMS_CAN_ID_cell, 0, 8, data2);
 
-  spi_enable(SPI_CLOCK_DIV16); // Restores the required SPI clock speed
+//  spi_enable(SPI_CLOCK_DIV16); // Restores the required SPI clock speed
+  spi_enable(SPI_CLOCK_DIV128); // Restores the required SPI clock speed
   
 }
 
@@ -440,6 +446,7 @@ void printCells(uint8_t datalog_en)
 
     }
   }
+  Serial.println(AMSStatus);
   Serial.println();
 }
 
