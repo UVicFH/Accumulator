@@ -37,6 +37,9 @@ const uint8_t ADC_CONVERSION_MODE = MD_7KHZ_3KHZ;//MD_7KHZ_3KHZ; //MD_26HZ_2KHZ;
 const uint8_t ADC_DCP = DCP_DISABLED; // See LTC6811_daisy.h for Options
 const uint8_t CELL_CH_TO_CONVERT = CELL_CH_ALL; // See LTC6811_daisy.h for Options
 
+#define maxErrCount 10
+int currErrCount = 0;
+
 #define debugging 0
 
 // Define CAN message IDs
@@ -138,7 +141,6 @@ void setup(){
 //  spi_enable(SPI_CLOCK_DIV16); // This will set the Linduino to have a 1MHz Clock
   spi_enable(SPI_CLOCK_DIV128); // Restores the required SPI clock speed
 
-
   // Generate and write a base configuration to chips
   LTC681x_init_cfg(TOTAL_IC, bms_ic);
   LTC6811_reset_crc_count(TOTAL_IC,bms_ic);
@@ -154,6 +156,8 @@ void setup(){
   pinMode(midpack_output_pin, OUTPUT);
   pinMode(pack_current_in_pin, INPUT);
   
+  digitalWrite(precharge_pin, DISABLED);
+  digitalWrite(air_toggle_pin, DISABLED);
 }
 
 void loop(){
@@ -211,40 +215,39 @@ void loop(){
   switch (nextAIRState){
     case OffState:
       
-      // Write the pins
-      digitalWrite(precharge_pin, DISABLED);
-      digitalWrite(air_toggle_pin, DISABLED);
+//      digitalWrite(precharge_pin, DISABLED);
+//      digitalWrite(air_toggle_pin, DISABLED);
   
       // Transition to precharge state if AMS good
       if(AMSStatus == ENABLED && digitalRead(midpack_input_pin)){
         nextAIRState = PrechargeState;
         startPrecharge = millis();
+        
+        // Write the pins (only writing to pins at first update to each state)
+        digitalWrite(precharge_pin, ENABLED);
+        digitalWrite(air_toggle_pin, DISABLED);
       }
 
       break;
       
     case PrechargeState:
-    
-      // Write the pins
-      digitalWrite(precharge_pin, ENABLED);
-      digitalWrite(air_toggle_pin, DISABLED);
 
       // Transition to on state if precharge timer complete
-      if(millis() - startPrecharge > prechargeDuration && digitalRead(midpack_input_pin)) nextAIRState = OnState;
+      if(millis() - startPrecharge > prechargeDuration && digitalRead(midpack_input_pin)) {
+        nextAIRState = OnState;
+        
+        digitalWrite(precharge_pin, DISABLED);
+        digitalWrite(air_toggle_pin, ENABLED);
+      }
 
       // Transition to off state if AMS bad
-      if(AMSStatus == DISABLED || !digitalRead(midpack_input_pin)) nextAIRState = OffState;
+      if(AMSStatus == DISABLED || !digitalRead(midpack_input_pin)) resetAIRState();
       
       break;
       
     case OnState:
       
-      // Write the pins
-      digitalWrite(precharge_pin, DISABLED);
-      digitalWrite(air_toggle_pin, ENABLED);
-
-      // Transition to off state if AMS bad
-      if(AMSStatus == DISABLED || !digitalRead(midpack_input_pin)) nextAIRState = OffState;
+      if(AMSStatus == DISABLED || !digitalRead(midpack_input_pin)) resetAIRState();
       
       break; 
       
@@ -257,6 +260,13 @@ void loop(){
   // Reset the watchdog timer
   wdt_reset();
   
+}
+
+void resetAIRState() {
+  nextAIRState = OffState;
+  
+  digitalWrite(precharge_pin, DISABLED);
+  digitalWrite(air_toggle_pin, DISABLED);
 }
 
 void readVoltages(){
@@ -301,8 +311,15 @@ void setStatuses(){
   // if highest cell has exceeded hard upper limit, shut down the pack
   if(maxCellVoltage > v_hardUpperLimit || minCellVoltage < v_lowerLimit ||
         packTemperature1 > temp_upperLimit || packTemperature2 > temp_upperLimit) {
-    AMSStatus = DISABLED;
+              
+    // increment err count and check if threshold has been reached
+    if (++currErrCount == maxErrCount) {
+      Serial.println("Pack errors, restarting AMSStatus");
+      AMSStatus = DISABLED;
+      currErrCount = 0;
+    }
   }
+  
   else AMSStatus = ENABLED;
   digitalWrite(AMS_STATUS_PIN, AMSStatus);
   
